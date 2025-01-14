@@ -5,7 +5,7 @@ library(dplyr)
 library(maps)
 
 # Load the dataset
-data <- read.csv("/Users/krispinkruger/Krueger/Protets/MassMobilizationProtestData.csv")
+data <- read.csv("/YourFilePath/MassMobilizationProtestData.csv") #You of course need to download the Dataset from this repository and then change the path to your path where you saved the file
 data$participants <- as.numeric(data$participants)
 data$country[data$country == "UK"] <- "United Kingdom"
 
