@@ -1,0 +1,305 @@
+---
+title: "DataSet_Presentation"
+author: "Krispin Krüger"
+date: "2025-09-01"
+output:
+  html_document:
+    toc_float: yes
+    toc: yes
+    numbered: yes
+    theme: journal
+  pdf_document:
+    toc: yes
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1.Packages
+
+```{r, echo=FALSE, results='hide', include=FALSE}
+library(foreign)
+#install.packages("ggplot2")
+library(ggplot2)
+#install.packages("tidyverse")
+library(tidyverse)
+#install.packages("plotly")
+library(plotly)
+#install.packages("gapminder")
+library(gapminder)
+#install.packages("psych")
+library(psych)
+#install.packages("car")
+library(car)
+library(carData)
+#install.packages("forcats")
+library(forcats)
+#install.packages("DescTools")
+library(DescTools)
+#install.packages("e1071")
+library(e1071)
+#install.packages("sjPlot")
+#install.packages("patchwork")
+library(patchwork)
+#install.packages("gridExtra")
+library(gridExtra)
+#install.packages("QuantPsyc")
+#install.packages("lm.beta")
+library(lm.beta)
+library(sjPlot)
+library(glmmTMB)
+#install.packages("tinytext")
+library(tinytex)
+#tinytex::install_tinytex()
+#install_tinytex()
+#install.packages("modelsummary")
+library(modelsummary)
+#install.packages("stargazer")
+library(stargazer)
+#install.packages("webshot")
+library(webshot)
+#install.packages("Hmisc")
+library(Hmisc)
+#install.packages("dplyr")
+library(dplyr)
+#install.packages("VIM", dependencies = TRUE)
+library(VIM)
+#install.packages("mice")
+library(mice)
+#install.packages("ggpubr")
+library(ggpubr)
+#install.packages("vtable")
+library(vtable)
+#install.packages("lme4")
+library(lme4)
+#install.packages("easystats")
+library(easystats)
+#install.packages("esquisse")
+library(esquisse)
+#install.packages("devtools")
+library(openai)
+require(devtools)
+#install.packages("pander")
+library(pander)
+#install.packages("lmtest")
+library(lmtest)
+#install.packages("sandwich")
+library(sandwich)
+#install.packages("miceadds")
+library(miceadds)
+#install.packages("expss")
+library(expss)
+#install.packages("logistf")
+library(logistf)
+#install.packages("parameters")
+library(parameters)
+#install.packages("maps")
+library(maps)
+library(dplyr)
+library(ggthemes)
+library(leaflet)
+library(shiny)
+```
+
+# 2.Dataset
+
+-   Mass Mobilization Data Set
+
+-   <https://doi.org/10.7910/DVN/HTTWYL>
+
+```{r}
+data <- read.csv("/Users/krispinkruger/Library/Mobile Documents/com~apple~CloudDocs/Universität/3. Masteresemester 24:25/Causal Inference for Conflict Studies/DataSet_Presentation/MassMobilizationProtestData.csv", header = TRUE, stringsAsFactors = FALSE, sep = ",")
+View(data)
+
+#Desc(data)
+```
+
+```{r}
+data$country[data$country == "UK"] <- "United Kingdom"
+# Inspect the Data
+head(data)
+summary(data)
+
+# Aggregate Data for Protests by Country
+country_protests <- data %>%
+  group_by(country) %>%
+  summarise(Total_Protests = sum(protest, na.rm = TRUE))
+
+# Descriptive Statistics
+# Print Summary Statistics
+summary(country_protests$Total_Protests)
+quantile(country_protests$Total_Protests, probs = seq(0, 1, 0.25))
+
+# Basic Bar Plot for Top 10 Countries with Most Protests
+top_countries <- country_protests %>%
+  arrange(desc(Total_Protests)) %>%
+  head(15)
+bottom_countries <- country_protests %>%
+  arrange(desc(Total_Protests)) %>%
+  tail(15)
+
+ggplot(top_countries, aes(x = reorder(country, Total_Protests), y = Total_Protests)) +
+  geom_bar(stat = "identity", fill = "#079ACE") +
+  coord_flip() +
+  labs(title = "Top 10 Countries with Most Protests", x = "Country", y = "Number of Protests") +
+  theme_minimal()
+
+ggplot(bottom_countries, aes(x = reorder(country, Total_Protests), y = Total_Protests)) +
+  geom_bar(stat = "identity", fill = "#079ACE") +
+  coord_flip() +
+  labs(title = "Top 10 Countries with Least Protests", x = "Country", y = "Number of Protests") +
+  theme_minimal()
+
+# World Map Heatmap of Protests
+# Load World Map Data
+world_map <- map_data("world")
+# Replace "United Kingdom" with "UK" to match the world map dataset
+country_protests$country <- ifelse(country_protests$country == "United Kingdom", "UK", country_protests$country)
+
+# Merge the Protests Data with World Map Data
+map_data <- world_map %>%
+  left_join(country_protests, by = c("region" = "country"))
+
+# Plot Heatmap
+ggplotly(ggplot(map_data, aes(x = long, y = lat, group = group, fill = Total_Protests)) +
+  geom_polygon(color = "white") +
+  scale_fill_gradientn(
+    colours = c("lightyellow","lightblue","lightgreen","red"),
+    values = scales::rescale(c(0, 10, 50, 100, max(map_data$Total_Protests, na.rm = TRUE))),
+    na.value = "gray90"
+  ) +
+  labs(title = "World Heatmap of Protests by Country", fill = "Number of Protests") +
+  theme_void() +
+  theme(legend.position = "bottom"))
+```
+
+```{r}
+# Summarize Data by Year and Region
+protests_by_year_region <- data %>%
+  group_by(year, region) %>%
+  summarise(Total_Protests = n()) %>%
+  ungroup()
+
+# Plot Stacked Bar Chart
+ggplotly(ggplot(protests_by_year_region, aes(x = year, y = Total_Protests, fill = region)) +
+  geom_bar(stat = "identity") +
+  scale_fill_brewer(palette = "Set3") + # Use a color palette for regions
+  labs(
+    title = "Protests per Year by Region",
+    x = "Year",
+    y = "Number of Protests",
+    fill = "Region"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  ))
+```
+
+```{r}
+# Ensure the participants column is numeric
+data$participants <- as.numeric(data$participants)
+
+# Summarize Data by Year and Region
+protests_by_year_region <- data %>%
+  group_by(year, region) %>%
+  summarise(
+    Total_Protests = n(),
+    Total_Participants = sum(participants, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+# Plot with protests by year and reagion
+ggplot(protests_by_year_region, aes(x = as.factor(year))) +
+  geom_bar(
+    aes(y = Total_Protests, fill = region),
+    stat = "identity",
+    position = "dodge",
+    color = "black",
+    width = 0.7
+  ) +
+  geom_line(
+    aes(y = Total_Participants / 10000, group = region, color = region),
+    size = 1.2
+  ) +
+  geom_point(
+    aes(y = Total_Participants / 10000, color = region),
+    size = 3
+  ) +
+  scale_y_continuous(
+    name = "Number of Protests",
+    sec.axis = sec_axis(~ . * 10000, name = "Participants (in tens of thousands)", labels = scales::comma)
+  ) +
+  scale_x_discrete(
+    breaks = seq(min(protests_by_year_region$year), max(protests_by_year_region$year), by = 3)
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    title = "Protests per Year by Region with Participants",
+    x = "Year",
+    y = "Number of Protests",
+    fill = "Region",
+    color = "Region",
+    caption = "Bars represent protests; lines and points represent participants (scaled by 10,000)."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.y.right = element_text(color = "black", size = 12),
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.caption = element_text(size = 10, hjust = 0)
+  )
+#########################################
+ggplotly(ggplot(protests_by_year_region, aes(x = as.factor(year))) +
+  geom_bar(
+    aes(y = Total_Protests, fill = region),
+    stat = "identity",
+    position = "dodge",
+    color = "black",
+    width = 0.7
+  ) +
+  geom_line(
+    aes(y = Total_Participants / 10000, group = region, color = region),
+    size = 1.2
+  ) +
+  geom_point(
+    aes(y = Total_Participants / 10000, color = region),
+    size = 3
+  ) +
+  scale_y_continuous(
+    name = "Number of Protests",
+    sec.axis = sec_axis(~ . * 10000, name = "Participants (in tens of thousands)", labels = scales::comma)
+  ) +
+  scale_x_discrete(
+    breaks = seq(min(protests_by_year_region$year), max(protests_by_year_region$year), by = 3)
+  ) +
+  scale_fill_brewer(palette = "Set2") +
+  scale_color_brewer(palette = "Set2") +
+  labs(
+    title = "Protests per Year by Region with Participants",
+    x = "Year",
+    y = "Number of Protests",
+    fill = "Region",
+    color = "Region",
+    caption = "Bars represent protests; lines and points represent participants (scaled by 10,000)."
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title.y.right = element_text(color = "black", size = 12),
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.caption = element_text(size = 10, hjust = 0)
+  ))
+```
