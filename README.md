@@ -3,7 +3,7 @@ This repository contains a Shiny app for visualizing protest data.
 
 ## Files
 - `app.R`: The main Shiny app script.
-- `data.RData`: The dataset used by the app.
+- `MassMobilizationProtestData.csv`: The dataset used by the app.
 
 ## Running the App
 1. Clone the repository: git clone  https://github.com/krispink2000/Causal_Inference_MassMobilization.git
